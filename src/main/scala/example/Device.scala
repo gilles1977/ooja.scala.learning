@@ -1,3 +1,5 @@
+package example
+
 import akka.actor.{ Actor, ActorLogging, Props }
 
 object Device {
@@ -19,5 +21,4 @@ class Device(groupId: String, deviceId: String) extends Actor with ActorLogging 
     case ReadTemperature(id) =>
       sender() ! RespondTemperature(id, lastTemperatureReading)
   }
-
 }
