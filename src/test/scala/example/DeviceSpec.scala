@@ -23,16 +23,28 @@ class DeviceSpec(_system: ActorSystem)
     "Device actor" must {
         //#device-read-test
         "reply with empty reading if no temperature is known" in {
-        val probe = TestProbe()
-        val deviceActor = system.actorOf(Device.props("group", "device"))
+            val probe = TestProbe()
+            val deviceActor = system.actorOf(Device.props("group", "device"))
 
-        deviceActor.tell(Device.ReadTemperature(requestId = 42), probe.ref)
-        val response = probe.expectMsgType[Device.RespondTemperature]
-        response.requestId should ===(42L)
-        response.value should ===(None)
-    }
-    //#device-read-test
+            deviceActor.tell(Device.ReadTemperature(requestId = 42), probe.ref)
+            val response = probe.expectMsgType[Device.RespondTemperature]
+            response.requestId should ===(42L)
+            response.value should ===(None)
+        }
+        //#device-read-test
 
+        "reply with recorded temperature if known" in {
+            val probe = TestProbe()
+            val deviceActor = system.actorOf(Device.props("group", "device"))
+
+            deviceActor.tell(Device.RecordTemperature(requestId = 1, 18.5), probe.ref)
+            probe.expectMsg(Device.TemperatureRecorded(requestId = 1))
+            
+            deviceActor.tell(Device.ReadTemperature(requestId = 2), probe.ref)
+            val response = probe.expectMsgType[Device.RespondTemperature]
+            response.requestId should === (2L)
+            response.value should === (Some(18.5F))
+        }
     //#device-write-read-test
     // "reply with latest temperature reading" in {
     //   val probe = TestProbe()
@@ -56,6 +68,8 @@ class DeviceSpec(_system: ActorSystem)
     // }
     //#device-write-read-test
 
-  }
-
+        "ignore wrong registration requests" in {
+            val probe = TestProbe()
+        }
+    }
 }
