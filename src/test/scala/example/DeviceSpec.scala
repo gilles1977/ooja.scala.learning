@@ -68,8 +68,51 @@ class DeviceSpec(_system: ActorSystem)
     // }
     //#device-write-read-test
 
+        "reply to registration requests" in {
+            val probe = TestProbe()
+            val deviceActor = system.actorOf(Device.props("group", "device"))
+
+            deviceActor.tell(DeviceManager.RequestTrackDevice("group", "device"), probe.ref)
+            probe.expectMsg(DeviceManager.DeviceRegistered)
+            probe.lastSender should === (deviceActor)
+        }
+
         "ignore wrong registration requests" in {
             val probe = TestProbe()
+            val deviceActor = system.actorOf(Device.props("group", "device"))
+
+            deviceActor.tell(DeviceManager.RequestTrackDevice("wrongGroup", "device"), probe.ref)
+            probe.expectNoMessage(500.millisecond)
+
+            deviceActor.tell(DeviceManager.RequestTrackDevice("group", "wrongDevice"), probe.ref)
+            probe.expectNoMessage(500.millisecond)
+        }
+
+        "be able to register a device actor" in {
+            val probe = TestProbe()
+            val groupActor = system.actorOf(DeviceGroup.props("group"))
+
+            groupActor.tell(DeviceManager.RequestTrackDevice("group", "device1"), probe.ref)
+            probe.expectMsg(DeviceManager.DeviceRegistered)
+            val deviceActor1 = probe.lastSender
+
+            groupActor.tell(DeviceManager.RequestTrackDevice("group", "device2"), probe.ref)
+            probe.expectMsg(DeviceManager.DeviceRegistered)
+            val deviceActor2 = probe.lastSender
+            deviceActor1 should !==(deviceActor2)
+
+            deviceActor1.tell(Device.RecordTemperature(1, 18.3), probe.ref)
+            probe.expectMsg(Device.TemperatureRecorded(requestId = 1))
+            deviceActor2.tell(Device.RecordTemperature(2, 20.0), probe.ref)
+            probe.expectMsg(Device.TemperatureRecorded(requestId = 2))
+        }
+
+        "ignore requests for wrong group id" in {
+            val probe = TestProbe()
+            val groupActor = system.actorOf(DeviceGroup.props("group"))
+
+            groupActor.tell(DeviceManager.RequestTrackDevice("wrongGroup", "device"), probe.ref)
+            probe.expectNoMessage(500.millisecond)
         }
     }
 }
